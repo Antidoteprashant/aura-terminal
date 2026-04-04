@@ -1,0 +1,59 @@
+services:
+  - type: web
+    name: rag-terminal
+    runtime: python
+    region: oregon           # closest to most users; change to frankfurt / singapore as needed
+    plan: free               # upgrade to starter ($7/mo) for always-on + persistent disk
+    branch: main
+
+    buildCommand: pip install -r requirements.txt
+
+    # Gunicorn is more robust than Flask's dev server in production.
+    # -w 1  → single worker (free tier is memory-constrained)
+    # --timeout 120 → allow slow LLM responses without worker kill
+    startCommand: gunicorn run:app -w 1 --timeout 120 --bind 0.0.0.0:$PORT
+
+    healthCheckPath: /api/health
+
+    envVars:
+      # ── Hosting flag — tells run.py to activate Groq + Pinecone mode ─────────
+      - key: RENDER
+        value: "1"
+
+      # ── LLM (Groq) ────────────────────────────────────────────────────────────
+      - key: GROQ_API_KEY
+        sync: false          # set manually in the Render dashboard (never commit keys)
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+
+      # ── Vector store (Pinecone) ───────────────────────────────────────────────
+      - key: PINECONE_API_KEY
+        sync: false          # set manually in the Render dashboard
+      - key: PINECONE_INDEX
+        value: rag-terminal
+
+      # ── Embeddings ────────────────────────────────────────────────────────────
+      - key: EMBEDDING_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+
+      # ── Chunking ──────────────────────────────────────────────────────────────
+      - key: CHUNK_SIZE
+        value: "500"
+      - key: CHUNK_OVERLAP
+        value: "50"
+
+      # ── Flask ─────────────────────────────────────────────────────────────────
+      - key: FLASK_HOST
+        value: "0.0.0.0"
+      - key: FLASK_PORT
+        value: "10000"       # Render assigns $PORT at runtime; this is the fallback
+      - key: FLASK_DEBUG
+        value: "false"
+
+      # ── Upload ────────────────────────────────────────────────────────────────
+      - key: UPLOAD_FOLDER
+        value: /tmp/uploads  # /tmp is writable on Render free tier; not persistent
+      - key: MAX_CONTENT_LENGTH
+        value: "16777216"
+      - key: ALLOWED_EXTENSIONS
+        value: pdf,txt,md

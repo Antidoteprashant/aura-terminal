@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="RAG Document Q&A Terminal — ask questions about your study documents" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>RAG Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="terminal.css" />
+</head>
+<body>
+
+  <!-- Full-screen drag-and-drop overlay (hidden until drag) -->
+  <div id="drop-zone">
+    <div id="drop-zone-inner">
+      <div id="drop-icon">⬇</div>
+      <div>Drop files to upload</div>
+      <div class="drop-hint">PDF · TXT · MD</div>
+    </div>
+  </div>
+
+  <!-- ASCII art header -->
+  <div id="header"></div>
+
+  <!-- Scrollable output area -->
+  <div id="output" role="log" aria-live="polite" aria-label="Terminal output"></div>
+
+  <!-- Command input bar -->
+  <div id="input-bar">
+    <span class="prompt" aria-hidden="true">&gt;&nbsp;</span>
+    <div id="input-wrap">
+      <span id="input-mirror" aria-hidden="true"></span>
+      <input
+        type="text"
+        id="cmd-input"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        autofocus
+        aria-label="Terminal input"
+        placeholder=""
+      />
+      <span id="cursor" class="blink" aria-hidden="true">█</span>
+    </div>
+  </div>
+
+  <!-- Hidden file input for /upload command -->
+  <input type="file" id="file-input" multiple accept=".pdf,.txt,.md" style="display:none" aria-hidden="true" />
+
+  <!-- Status bar -->
+  <div id="status-bar" aria-label="System status">
+    <span id="ollama-status">[OLLAMA: <span class="status-dot">●</span>CONNECTING]</span>
+    <span id="model-info">MODEL: — | DOCS: —</span>
+    <span id="clock">00:00:00</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

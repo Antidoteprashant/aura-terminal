@@ -1,0 +1,35 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+flask==3.1.1
+flask-cors==5.0.1
+python-dotenv==1.1.0
+gunicorn>=21.2.0             # production WSGI server (used by Render)
+
+# ── Document parsing ──────────────────────────────────────────────────────────
+PyPDF2==3.0.1
+markdown-it-py==3.0.0
+
+# ── Text chunking ─────────────────────────────────────────────────────────────
+langchain-text-splitters==0.3.8
+
+# ── Embeddings ────────────────────────────────────────────────────────────────
+sentence-transformers==4.1.0
+
+# ── HTTP client (Ollama + plain Groq fallback) ────────────────────────────────
+requests==2.32.3
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+uuid6==2024.7.10
+
+# ── LOCAL mode only ───────────────────────────────────────────────────────────
+# ChromaDB — embedded vector store, no server needed
+chromadb==1.5.5
+
+# ── HOSTED mode only (Render / production) ────────────────────────────────────
+# Install these when deploying: pip install pinecone-client langchain-groq
+#
+# Pinecone — serverless vector store
+pinecone-client>=3.0.0
+#
+# LangChain Groq — ChatGroq streaming client
+langchain-groq>=0.2.0
+langchain-core>=0.3.83
