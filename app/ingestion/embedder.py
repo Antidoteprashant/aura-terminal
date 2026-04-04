@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 _model = None
 
 # Free Hugging Face Inference API endpoint for your exact model
-API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
 
 def _get_local_model():
     """Load the local PyTorch model only if we aren't using the cloud API."""
