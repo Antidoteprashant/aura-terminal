@@ -1,53 +1,66 @@
-"""Embedding generation using sentence-transformers (singleton pattern)."""
+"""Hybrid Embedding generation (Hugging Face API for Cloud, Local for Dev)."""
 
+import os
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton — loaded once, reused for the lifetime of the process
+# Module-level singleton for local mode
 _model = None
 
+# Free Hugging Face Inference API endpoint for your exact model
+API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
 
-def _get_model():
-    """Load the embedding model on first call and cache it.
-
-    Reads the model name from app config (EMBEDDING_MODEL). Falls back to
-    all-MiniLM-L6-v2 if config is unavailable (e.g. during tests).
-
-    Returns:
-        SentenceTransformer: The loaded model instance.
-    """
+def _get_local_model():
+    """Load the local PyTorch model only if we aren't using the cloud API."""
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
-
         try:
-            from flask import current_app
-            model_name = current_app.config.get(
-                "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
+            from sentence_transformers import SentenceTransformer
+            logger.info("Loading local all-MiniLM-L6-v2 model into memory...")
+            _model = SentenceTransformer("all-MiniLM-L6-v2")
+        except ImportError:
+            raise RuntimeError(
+                "sentence-transformers is not installed locally. "
+                "Run `pip install sentence-transformers` if you want to run this locally without an API key."
             )
-        except RuntimeError:
-            model_name = "sentence-transformers/all-MiniLM-L6-v2"
-
-        logger.info("Loading embedding model: %s", model_name)
-        _model = SentenceTransformer(model_name)
-        logger.info("Embedding model loaded.")
-
     return _model
 
-
 def get_embeddings(texts: list[str]) -> list[list[float]]:
-    """Generate embeddings for a list of text strings.
-
-    Uses all-MiniLM-L6-v2 which produces 384-dimensional vectors.
-    Processes texts in a single batch for efficiency.
-
-    Args:
-        texts: List of text strings to embed.
-
-    Returns:
-        list[list[float]]: One embedding vector per input text.
     """
-    model = _get_model()
-    vectors = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
-    return [v.tolist() for v in vectors]
+    Generate embeddings using a smart Hybrid approach:
+    1. If HF_TOKEN is in environment -> Route to Hugging Face API (Render Mode)
+    2. If no token -> Load model into local memory (MacBook Mode)
+    """
+    hf_token = os.environ.get("HF_TOKEN")
+
+    if hf_token:
+        # ==========================================
+        # CLOUD MODE (Render / Production)
+        # ==========================================
+        logger.info("HF_TOKEN found. Routing embeddings to Hugging Face API...")
+        headers = {"Authorization": f"Bearer {hf_token}"}
+        payload = {"inputs": texts, "options": {"wait_for_model": True}}
+
+        try:
+            response = requests.post(API_URL, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            # The API returns a list of lists of floats, exactly what we need
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            logger.error("Hugging Face API Failed: %s", e)
+            if 'response' in locals() and response is not None:
+                logger.error("API Response: %s", response.text)
+            raise RuntimeError("Cloud embedding generation failed.")
+
+    else:
+        # ==========================================
+        # LOCAL MODE (Development)
+        # ==========================================
+        logger.info("No HF_TOKEN found. Processing embeddings locally...")
+        model = _get_local_model()
+        vectors = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
+        return [v.tolist() for v in vectors]
