@@ -44,8 +44,8 @@ def init_store() -> None:
         from pinecone import Pinecone, ServerlessSpec
     except ImportError:
         raise RuntimeError(
-            "pinecone-client is not installed. "
-            "Run: pip install pinecone-client"
+            "The 'pinecone' package is not installed. "
+            "Ensure requirements.txt has 'pinecone>=6.0.0' and NOT 'pinecone-client'."
         )
 
     api_key    = _cfg("PINECONE_API_KEY")
@@ -57,11 +57,13 @@ def init_store() -> None:
             "Add it to your environment variables."
         )
 
+    # Initialize the client (v6.0.0+ syntax)
     pc = Pinecone(api_key=api_key)
 
-    # Create index if it doesn't exist yet
-    existing = [idx.name for idx in pc.list_indexes()]
-    if index_name not in existing:
+    # Create index if it doesn't exist yet using the new .names() method
+    existing_indexes = pc.list_indexes().names()
+    
+    if index_name not in existing_indexes:
         logger.info("Creating Pinecone index '%s' (dim=%d, cosine).", index_name, _embed_dim)
         pc.create_index(
             name=index_name,
@@ -83,14 +85,7 @@ def _get_index():
 def add_document(
     doc_id: str, chunks: list[dict], embeddings: list, metadata: dict
 ) -> None:
-    """Upsert a document's chunks and embeddings into Pinecone.
-
-    Args:
-        doc_id: Unique document identifier.
-        chunks: List of chunk dicts from chunker.chunk_text.
-        embeddings: List of embedding vectors (384-dim each).
-        metadata: Document-level metadata (filename, upload_date, etc.).
-    """
+    """Upsert a document's chunks and embeddings into Pinecone."""
     index = _get_index()
 
     vectors = []
@@ -117,15 +112,7 @@ def add_document(
 
 
 def search(query_embedding: list[float], top_k: int = 5) -> list[dict]:
-    """Return the top-k most similar chunks from Pinecone.
-
-    Args:
-        query_embedding: 384-dimensional query vector.
-        top_k: Number of results to return.
-
-    Returns:
-        list[dict]: Matches with "text", "metadata", and "distance" keys.
-    """
+    """Return the top-k most similar chunks from Pinecone."""
     index = _get_index()
 
     results = index.query(
@@ -147,11 +134,7 @@ def search(query_embedding: list[float], top_k: int = 5) -> list[dict]:
 
 
 def delete_document(doc_id: str) -> None:
-    """Remove all chunks belonging to a document from Pinecone.
-
-    Args:
-        doc_id: The document identifier to delete.
-    """
+    """Remove all chunks belonging to a document from Pinecone."""
     index = _get_index()
 
     # Pinecone's delete with metadata filter (requires serverless or paid tier)
@@ -159,8 +142,6 @@ def delete_document(doc_id: str) -> None:
         index.delete(filter={"doc_id": doc_id})
         logger.info("Deleted all chunks for doc_id='%s' from Pinecone.", doc_id)
     except Exception as exc:
-        # Older Pinecone plans may not support metadata filtering on delete;
-        # fall back to ID-based delete by listing all IDs with that prefix.
         logger.warning(
             "Metadata-filter delete failed (%s). Falling back to ID-based delete.", exc
         )
@@ -177,14 +158,7 @@ def _delete_by_prefix(index, prefix: str) -> None:
 
 
 def get_document_chunks(doc_id: str) -> list[dict]:
-    """Return all chunks for a specific document, ordered by chunk_index.
-
-    Args:
-        doc_id: The document identifier.
-
-    Returns:
-        list[dict]: Chunk dicts with "text" and "metadata" keys.
-    """
+    """Return all chunks for a specific document, ordered by chunk_index."""
     index = _get_index()
 
     # Collect all vector IDs for this doc via prefix listing
@@ -193,7 +167,7 @@ def get_document_chunks(doc_id: str) -> list[dict]:
         for page in index.list(prefix=f"{doc_id}_"):
             all_ids.extend(page)
     except Exception:
-        # Older SDK: can't list, so query with zero-vector + filter
+        # Fallback for older SDKs or environments without list support
         import os
         zero = [0.0] * _embed_dim
         results = index.query(
@@ -232,14 +206,7 @@ def get_document_chunks(doc_id: str) -> list[dict]:
 
 
 def list_documents() -> list[dict]:
-    """List all unique documents in Pinecone.
-
-    Uses a zero-vector query (top_k=10000) to discover all stored chunks,
-    then groups by doc_id to reconstruct the document list.
-
-    Returns:
-        list[dict]: One entry per document: {id, filename, upload_date, chunks}.
-    """
+    """List all unique documents in Pinecone."""
     index = _get_index()
 
     try:

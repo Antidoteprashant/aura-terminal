@@ -28,7 +28,7 @@ chromadb==1.5.5
 # Install these when deploying: pip install pinecone-client langchain-groq
 #
 # Pinecone — serverless vector store
-pinecone-client>=3.0.0
+pinecone>=6.0.0
 #
 # LangChain Groq — ChatGroq streaming client
 langchain-groq>=0.2.0
