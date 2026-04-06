@@ -747,10 +747,38 @@ function refocusInput() {
   if (!state.streaming) cmdInput.focus();
 }
 
+// ── Onboarding Logic ──────────────────────────────────────────
+async function startOnboarding() {
+  const overlay = document.getElementById('onboarding-overlay');
+  const skipBtn = document.getElementById('skip-onboarding');
+  
+  let onboardingDone = false;
+
+  const finish = () => {
+    if (onboardingDone) return;
+    onboardingDone = true;
+    overlay.classList.add('hidden');
+    
+    // Resume app initialization
+    printWelcome();
+    cmdInput.focus();
+    
+    // Remove from DOM after transition
+    setTimeout(() => overlay.remove(), 800);
+  };
+
+  skipBtn.addEventListener('click', finish);
+
+  // Auto-finish after 7 seconds
+  setTimeout(finish, 7500); // 7.5s to account for last animation
+}
+
 // ── Initialisation ────────────────────────────────────────────
 function init() {
   renderHeader();
-  printWelcome();
+  
+  // Delay welcome and focus for onboarding
+  startOnboarding();
 
   // Input events
   cmdInput.addEventListener('keydown', handleKeydown);
@@ -775,8 +803,6 @@ function init() {
 
   // Pre-load the document list silently so /summarize and /delete work
   refreshDocs(false);
-
-  cmdInput.focus();
 }
 
 document.addEventListener('DOMContentLoaded', init);

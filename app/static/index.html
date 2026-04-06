@@ -12,6 +12,22 @@
   <link rel="stylesheet" href="terminal.css" />
 </head>
 <body>
+  <!-- Onboarding screen (hidden after 7s or skip) -->
+  <div id="onboarding-overlay">
+    <div id="onboarding-content">
+      <div id="onboarding-status">ACCESSING AURA_PROTOCOL...</div>
+      <div id="onboarding-logo" class="glitch-aura">AURA</div>
+      <div id="onboarding-subtitle">Your Intelligent RAG Terminal</div>
+      
+      <div id="onboarding-features">
+        <div class="feature-item">SCANNING VECTOR_STORE...</div>
+        <div class="feature-item">SYSTEM_STABLE...</div>
+        <div class="feature-item">READY_FOR_QUERY...</div>
+      </div>
+    </div>
+    <button id="skip-onboarding" aria-label="Skip onboarding">SKIP_INTRO</button>
+  </div>
+
 
   <!-- Full-screen drag-and-drop overlay (hidden until drag) -->
   <div id="drop-zone">
