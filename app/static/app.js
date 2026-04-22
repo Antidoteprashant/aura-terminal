@@ -35,6 +35,7 @@ const dropZone    = document.getElementById('drop-zone');
 const ollamaBadge = document.getElementById('ollama-status');
 const modelBadge  = document.getElementById('model-info');
 const clockEl     = document.getElementById('clock');
+const autocompleteEl = document.getElementById('autocomplete-dropdown');
 
 // ── Utilities ─────────────────────────────────────────────────
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -45,6 +46,86 @@ function scrollToBottom() {
 
 function padEnd(str, n) {
   return String(str).slice(0, n).padEnd(n);
+}
+
+// ── Autocomplete ─────────────────────────────────────────────
+const COMMANDS = [
+  { cmd: '/upload',    desc: 'Upload a document (PDF, TXT, MD)' },
+  { cmd: '/docs',      desc: 'List uploaded documents' },
+  { cmd: '/ls',        desc: 'List uploaded documents' },
+  { cmd: '/summarize', desc: 'Summarise a document' },
+  { cmd: '/delete',    desc: 'Delete a document and its embeddings' },
+  { cmd: '/status',    desc: 'Check LLM connection & stats' },
+  { cmd: '/clear',     desc: 'Clear terminal output' },
+  { cmd: '/help',      desc: 'Show all commands' },
+];
+
+let _acItems = [];   // filtered commands currently shown
+let _acIndex = -1;   // active highlighted index (-1 = none)
+
+function showAutocomplete(partial) {
+  const q = partial.toLowerCase();
+  _acItems = COMMANDS.filter((c) => c.cmd.startsWith(q));
+  _acIndex  = -1;
+
+  if (_acItems.length === 0) { hideAutocomplete(); return; }
+
+  autocompleteEl.innerHTML = '';
+  _acItems.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'ac-item';
+    div.setAttribute('role', 'option');
+
+    // Highlight matched prefix in green, rest in cyan
+    const matchedPart = item.cmd.slice(0, q.length);
+    const remainPart  = item.cmd.slice(q.length);
+    const cmdSpan     = document.createElement('span');
+    cmdSpan.className = 'ac-cmd';
+    const matchEl     = document.createElement('span');
+    matchEl.className = 'ac-match';
+    matchEl.textContent = matchedPart;
+    cmdSpan.appendChild(matchEl);
+    cmdSpan.appendChild(document.createTextNode(remainPart));
+
+    const descSpan     = document.createElement('span');
+    descSpan.className = 'ac-desc';
+    descSpan.textContent = item.desc;
+
+    div.appendChild(cmdSpan);
+    div.appendChild(descSpan);
+    div.addEventListener('mousedown', (e) => { e.preventDefault(); _selectAcItem(i); });
+    autocompleteEl.appendChild(div);
+  });
+
+  autocompleteEl.classList.add('visible');
+}
+
+function hideAutocomplete() {
+  autocompleteEl.classList.remove('visible');
+  _acItems = [];
+  _acIndex  = -1;
+}
+
+function _setAcActive(idx) {
+  const els = autocompleteEl.querySelectorAll('.ac-item');
+  els.forEach((el) => el.classList.remove('active'));
+  if (idx >= 0 && idx < els.length) {
+    els[idx].classList.add('active');
+    els[idx].scrollIntoView({ block: 'nearest' });
+    _acIndex = idx;
+  } else {
+    _acIndex = -1;
+  }
+}
+
+function _selectAcItem(idx) {
+  if (idx < 0 || idx >= _acItems.length) return;
+  const selected = _acItems[idx];
+  const needsArg = ['/summarize', '/delete'].includes(selected.cmd);
+  cmdInput.value = selected.cmd + (needsArg ? ' ' : '');
+  syncCursor();
+  hideAutocomplete();
+  cmdInput.focus();
 }
 
 // ── Cursor positioning ─────────────────────────────────────────
@@ -568,14 +649,42 @@ async function dispatch(input) {
 
 // ── Input handler (Enter + arrow history) ─────────────────────
 function handleKeydown(e) {
-  if (state.streaming) {
-    // Only allow Ctrl+C style abort (future enhancement) during stream
-    return;
+  if (state.streaming) return;
+
+  // ── Intercept keys when autocomplete dropdown is open ────────────
+  if (autocompleteEl.classList.contains('visible')) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _setAcActive(Math.min(_acIndex + 1, _acItems.length - 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (_acIndex > 0) _setAcActive(_acIndex - 1);
+      else              hideAutocomplete();
+      return;
+    }
+    if (e.key === 'Escape') {
+      hideAutocomplete();
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      _selectAcItem(_acIndex >= 0 ? _acIndex : 0);
+      return;
+    }
+    if (e.key === 'Enter' && _acIndex >= 0) {
+      e.preventDefault();
+      _selectAcItem(_acIndex);
+      return;
+    }
   }
 
   if (e.key === 'Enter') {
     const cmd = cmdInput.value.trim();
     if (!cmd) return;
+
+    hideAutocomplete();
 
     // Push to history (no duplicates at front)
     if (state.cmdHistory[0] !== cmd) {
@@ -594,7 +703,6 @@ function handleKeydown(e) {
     if (next < state.cmdHistory.length) {
       state.historyIdx = next;
       cmdInput.value = state.cmdHistory[next];
-      // Move caret to end
       setTimeout(() => cmdInput.setSelectionRange(cmdInput.value.length, cmdInput.value.length), 0);
       syncCursor();
     }
@@ -616,6 +724,14 @@ function handleKeydown(e) {
 // ── Cursor sync on input ──────────────────────────────────────
 function handleInputChange() {
   syncCursor();
+  // Show autocomplete when typing a /command (first word only)
+  const val     = cmdInput.value;
+  const cmdWord = val.split(' ')[0];
+  if (cmdWord.startsWith('/') && val === cmdWord) {
+    showAutocomplete(cmdWord);
+  } else {
+    hideAutocomplete();
+  }
 }
 
 // ── Drag & drop ───────────────────────────────────────────────
@@ -786,6 +902,8 @@ function init() {
   // keyup catches arrow keys, Home/End; click handles mouse repositioning
   cmdInput.addEventListener('keyup',   syncCursor);
   cmdInput.addEventListener('click',   syncCursor);
+  // Hide autocomplete when input loses focus (click elsewhere)
+  cmdInput.addEventListener('blur',    () => setTimeout(hideAutocomplete, 120));
 
   // Clicking anywhere in the terminal re-focuses input
   output.addEventListener('click', refocusInput);
