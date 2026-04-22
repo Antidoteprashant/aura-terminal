@@ -8,6 +8,7 @@ HTTP round-trip on every token-stream request in local mode.
 """
 
 import logging
+import os
 import time
 from typing import Generator
 
@@ -68,12 +69,11 @@ def resolve_backend() -> tuple[str, str]:
     if _cache["backend"] is not None and (now - _cache["ts"]) < _CACHE_TTL:
         return _cache["backend"], _cache["model"]
 
-    if _is_hosted():
-        # Hosted: always use langchain_groq — key was validated at startup
+    if _is_hosted() or os.getenv("FORCE_GROQ", "").lower() in ("1", "true", "yes"):
         result = ("groq_langchain", _groq_model())
-        logger.info("LLM backend: langchain_groq (%s) [hosted]", result[1])
+        logger.info("LLM backend: Groq (via langchain-groq) [forced/hosted]")
     else:
-        # Local: try Ollama first, then plain Groq client
+        # Local: try Ollama first, then fallback to Groq
         from app.rag.ollama_client import check_connection as ollama_up
         if ollama_up():
             result = ("ollama", _ollama_model())
@@ -81,8 +81,8 @@ def resolve_backend() -> tuple[str, str]:
         else:
             from app.rag.groq_client import has_api_key
             if has_api_key():
-                result = ("groq", _groq_model())
-                logger.info("LLM backend: Groq (%s) — Ollama unavailable", result[1])
+                result = ("groq_langchain", _groq_model())
+                logger.info("LLM backend: Groq (via langchain-groq) — Ollama unavailable")
             else:
                 result = ("none", "")
                 logger.warning(
@@ -117,10 +117,6 @@ def generate_stream(prompt: str) -> Generator[str, None, None]:
 
     elif backend == "groq_langchain":
         yield from _groq_langchain_stream(prompt, model)
-
-    elif backend == "groq":
-        from app.rag.groq_client import generate_stream as _stream
-        yield from _stream(prompt, model)
 
     else:
         yield (
