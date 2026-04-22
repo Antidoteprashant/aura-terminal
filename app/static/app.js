@@ -134,10 +134,11 @@ function _makeThinkingEl() {
  *
  * @param {string}   url
  * @param {object}   body
- * @param {Function} onToken  — async (token: string) => void
- * @param {Function} onDone   — (data: object) => void  (optional)
+ * @param {Function} onToken       — async (token: string) => void
+ * @param {Function} onDone        — (data: object) => void  (optional)
+ * @param {Function} onContextNote — (note: string) => void  (optional)
  */
-async function streamSSE(url, body, onToken, onDone) {
+async function streamSSE(url, body, onToken, onDone, onContextNote) {
   state.streaming = true;
   cmdInput.disabled = true;
   // Hide the input-bar cursor while streaming — the response area has its own
@@ -177,6 +178,9 @@ async function streamSSE(url, body, onToken, onDone) {
           let evt;
           try { evt = JSON.parse(raw); } catch { continue; }
 
+          if (evt.context_note !== undefined) {
+            onContextNote && onContextNote(evt.context_note);
+          }
           if (evt.token !== undefined) {
             await onToken(evt.token);
           }
@@ -237,7 +241,15 @@ async function handleQuery(question) {
       scrollToBottom();
       await sleep(20);
     },
-    (data) => { sources = data.sources || []; }
+    (data) => { sources = data.sources || []; },
+    (note) => {
+      // Show contextual rewrite note above the response
+      const noteEl = document.createElement('div');
+      noteEl.className = 'context-note';
+      noteEl.textContent = '↻ ' + note;
+      block.insertBefore(noteEl, thinkEl);
+      scrollToBottom();
+    }
   );
 
   streamCursor.remove();          // cursor gone when done

@@ -233,6 +233,17 @@ body::before {
   padding-left: 8px;
 }
 
+/* Contextual rewrite note — shows when a follow-up was understood */
+.context-note {
+  color: var(--dim-text);
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  padding: 2px 0;
+  opacity: 0.75;
+}
+
 /* Document table — monospace box drawing */
 .doc-table pre {
   color: var(--green-dim);

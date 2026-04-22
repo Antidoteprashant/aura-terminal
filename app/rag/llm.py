@@ -168,3 +168,66 @@ def _groq_langchain_stream(prompt: str, model: str) -> Generator[str, None, None
     except Exception as exc:
         logger.error("langchain_groq stream error: %s", exc)
         yield f"[ERROR: Groq LLM error — {exc}]"
+
+
+def generate(prompt: str) -> str:
+    """Route a prompt to the active backend and return the full response.
+
+    Non-streaming variant used for quick internal tasks like query rewriting.
+
+    Args:
+        prompt: The fully-formatted prompt string.
+
+    Returns:
+        str: The complete response text, or empty string on error.
+    """
+    backend, model = resolve_backend()
+
+    if backend == "ollama":
+        from app.rag.ollama_client import generate as _gen
+        return _gen(prompt, model)
+
+    elif backend == "groq_langchain":
+        return _groq_langchain_generate(prompt, model)
+
+    elif backend == "groq":
+        from app.rag.groq_client import generate as _gen
+        return _gen(prompt, model)
+
+    else:
+        return ""
+
+
+def _groq_langchain_generate(prompt: str, model: str) -> str:
+    """Non-streaming response using langchain_groq.ChatGroq.
+
+    Args:
+        prompt: The fully-formatted prompt string.
+        model:  Groq model ID.
+
+    Returns:
+        str: The complete response text, or empty string on error.
+    """
+    try:
+        from langchain_groq import ChatGroq
+        from langchain_core.messages import HumanMessage
+    except ImportError:
+        return ""
+
+    api_key = _groq_api_key()
+    if not api_key:
+        return ""
+
+    try:
+        llm = ChatGroq(
+            api_key=api_key,
+            model_name=model,
+            streaming=False,
+            temperature=0.3,
+        )
+        result = llm.invoke([HumanMessage(content=prompt)])
+        return result.content.strip() if result.content else ""
+    except Exception as exc:
+        logger.error("langchain_groq generate error: %s", exc)
+        return ""
+
