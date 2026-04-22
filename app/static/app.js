@@ -63,6 +63,11 @@ const COMMANDS = [
 let _acItems = [];   // filtered commands currently shown
 let _acIndex = -1;   // active highlighted index (-1 = none)
 
+// ── Tab Completion State ─────────────────────────────────────
+let _tabMatches = [];
+let _tabIndex   = -1;
+let _lastTabBase = ""; // original input before completion started
+
 function showAutocomplete(partial) {
   const q = partial.toLowerCase();
   _acItems = COMMANDS.filter((c) => c.cmd.startsWith(q));
@@ -680,6 +685,52 @@ function handleKeydown(e) {
     }
   }
 
+  // ── Tab Completion (Dropdown hidden) ──────────────────────────
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const val = cmdInput.value;
+
+    // A. Command completion (if value starts with / and has no space)
+    if (val.startsWith('/') && !val.includes(' ')) {
+      const matches = COMMANDS.filter(c => c.cmd.startsWith(val.toLowerCase()));
+      if (matches.length === 1) {
+        _selectAcItem(COMMANDS.indexOf(matches[0])); // Uses existing helper
+      } else if (matches.length > 1) {
+        showAutocomplete(val);
+        _setAcActive(0);
+      }
+      return;
+    }
+
+    // B. Filename completion for specific commands
+    const parts = val.split(/\s+/);
+    if (parts.length >= 1 && ['/summarize', '/delete'].includes(parts[0])) {
+      const cmd   = parts[0];
+      const query = parts.slice(1).join(' ');
+
+      // If we are already cycling, just move to next
+      if (_tabMatches.length > 0 && _tabIndex !== -1 && val.startsWith(`${cmd} ${_lastTabBase}`)) {
+        _tabIndex = (_tabIndex + 1) % _tabMatches.length;
+        cmdInput.value = `${cmd} ${_tabMatches[_tabIndex]}`;
+        syncCursor();
+        return;
+      }
+
+      // Start new cycling
+      _lastTabBase = query;
+      _tabMatches  = state.documents
+        .map(d => d.filename)
+        .filter(name => name.toLowerCase().startsWith(query.toLowerCase()));
+
+      if (_tabMatches.length > 0) {
+        _tabIndex = 0;
+        cmdInput.value = `${cmd} ${_tabMatches[0]}`;
+        syncCursor();
+      }
+      return;
+    }
+  }
+
   if (e.key === 'Enter') {
     const cmd = cmdInput.value.trim();
     if (!cmd) return;
@@ -724,6 +775,11 @@ function handleKeydown(e) {
 // ── Cursor sync on input ──────────────────────────────────────
 function handleInputChange() {
   syncCursor();
+
+  // Reset tab completion state on any manual type
+  _tabMatches = [];
+  _tabIndex   = -1;
+
   // Show autocomplete when typing a /command (first word only)
   const val     = cmdInput.value;
   const cmdWord = val.split(' ')[0];
@@ -889,9 +945,29 @@ async function startOnboarding() {
   setTimeout(finish, 7500); // 7.5s to account for last animation
 }
 
+// ── Mobile Keyboard Fix (visualViewport) ───────────────────────
+function setupMobileViewport() {
+  if (!window.visualViewport) return;
+
+  const handleResize = () => {
+    const vh = window.visualViewport.height;
+    document.body.style.height = `${vh}px`;
+    
+    // Scroll the active input into view if the keyboard is up
+    if (vh < window.innerHeight) {
+      window.scrollTo(0, 0);
+      scrollToBottom();
+    }
+  };
+
+  window.visualViewport.addEventListener('resize', handleResize);
+  window.visualViewport.addEventListener('scroll', handleResize);
+}
+
 // ── Initialisation ────────────────────────────────────────────
 function init() {
   renderHeader();
+  setupMobileViewport();
   
   // Delay welcome and focus for onboarding
   startOnboarding();

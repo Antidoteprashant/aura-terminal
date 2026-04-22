@@ -50,6 +50,8 @@ body {
   overflow: hidden;
   /* Slight phosphor warmth */
   filter: brightness(1.0) contrast(1.02);
+  /* Prevent double-tap zoom and improve touch feel */
+  touch-action: manipulation;
 }
 
 /* ── CRT Scanlines overlay ──────────────────────────────────── */
@@ -254,6 +256,38 @@ body::before {
   letter-spacing: 0.05em;
 }
 
+/* ── Shortcuts Bar ───────────────────────────────────────────── */
+#shortcuts-bar {
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  padding: 4px 18px;
+  background: var(--bg);
+  border-top: 1px solid var(--bg-border);
+  font-size: 10px;
+  color: var(--dim-text);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+#shortcuts-bar::-webkit-scrollbar { display: none; }
+
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.shortcut .key {
+  color: var(--green-dim);
+  border: 1px solid var(--bg-border);
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 9px;
+  background: var(--bg-raise);
+}
+
 /* ── Input bar ──────────────────────────────────────────────── */
 #input-bar {
   flex-shrink: 0;
@@ -424,6 +458,8 @@ body::before {
   color: var(--dim-text);
   user-select: none;
   gap: 12px;
+  /* Modern mobile safe areas */
+  padding-bottom: calc(4px + env(safe-area-inset-bottom));
 }
 
 #ollama-status {
@@ -524,6 +560,8 @@ body::before {
 
   /* Prevent input zoom on iOS (requires ≥16px to avoid zoom) */
   #cmd-input { font-size: 16px; }
+
+  #shortcuts-bar { display: none; }
 }
 
 @media (max-width: 420px) {
