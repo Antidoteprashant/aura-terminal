@@ -37,6 +37,8 @@ const modelBadge  = document.getElementById('model-info');
 const clockEl     = document.getElementById('clock');
 const micToggle   = document.getElementById('mic-toggle');
 const ttsToggle   = document.getElementById('tts-toggle');
+const voiceBtn    = document.getElementById('voice-btn');
+const uploadBtn   = document.getElementById('upload-btn');
 
 // ── Utilities ─────────────────────────────────────────────────
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -564,10 +566,12 @@ function handleVoiceToggle() {
   if (isNowListening) {
     micToggle.textContent = '[MIC: ON\u25CF]';
     micToggle.classList.add('active');
+    if (voiceBtn) voiceBtn.classList.add('listening');
     printInfo("Listening for voice commands...");
   } else {
     micToggle.textContent = '[MIC: OFF]';
     micToggle.classList.remove('active');
+    if (voiceBtn) voiceBtn.classList.remove('listening');
   }
 }
 
@@ -860,6 +864,10 @@ function init() {
     micToggle.addEventListener('click', handleVoiceToggle);
     ttsToggle.addEventListener('click', handleTtsToggle);
   }
+
+  // Input-bar action buttons
+  if (voiceBtn) voiceBtn.addEventListener('click', handleVoiceToggle);
+  if (uploadBtn) uploadBtn.addEventListener('click', handleUpload);
 
   // Pre-load the document list silently so /summarize and /delete work
   refreshDocs(false);
