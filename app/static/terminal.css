@@ -262,6 +262,59 @@ body::before {
   padding: 8px 18px;
   border-top: 1px solid var(--bg-border);
   background: var(--bg);
+  gap: 6px;
+}
+
+/* Action buttons (voice + upload) sitting before the prompt */
+#input-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--bg-border);
+  border-radius: 4px;
+  color: var(--dim-text);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.action-btn:hover {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+  box-shadow: 0 0 8px var(--cyan-glow);
+}
+
+.action-btn:active {
+  transform: scale(0.92);
+}
+
+.action-btn svg {
+  display: block;
+}
+
+/* Voice button active state — pulsing glow when listening */
+.action-btn.listening {
+  color: var(--red);
+  border-color: var(--red);
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+  animation: mic-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 68, 68, 0.3); }
+  50%      { box-shadow: 0 0 14px rgba(255, 68, 68, 0.6); }
 }
 
 .prompt {
@@ -353,6 +406,22 @@ body::before {
   color: var(--dim-text);
   user-select: none;
   gap: 12px;
+}
+
+.interactive-toggle {
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 2px 4px;
+}
+
+.interactive-toggle:hover {
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+}
+
+.interactive-toggle.active {
+  color: var(--green);
+  text-shadow: var(--glow);
 }
 
 #ollama-status {
