@@ -355,6 +355,22 @@ body::before {
   gap: 12px;
 }
 
+.interactive-toggle {
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 2px 4px;
+}
+
+.interactive-toggle:hover {
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+}
+
+.interactive-toggle.active {
+  color: var(--green);
+  text-shadow: var(--glow);
+}
+
 #ollama-status {
   font-weight: 500;
   letter-spacing: 0.04em;

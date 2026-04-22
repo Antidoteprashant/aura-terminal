@@ -35,6 +35,8 @@ const dropZone    = document.getElementById('drop-zone');
 const ollamaBadge = document.getElementById('ollama-status');
 const modelBadge  = document.getElementById('model-info');
 const clockEl     = document.getElementById('clock');
+const micToggle   = document.getElementById('mic-toggle');
+const ttsToggle   = document.getElementById('tts-toggle');
 
 // ── Utilities ─────────────────────────────────────────────────
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -241,6 +243,10 @@ async function handleQuery(question) {
   // If Ollama was offline the thinkEl may still be showing
   if (firstToken) thinkEl.remove();
   printSources(sources);
+
+  if (window.VoiceManager && window.VoiceManager.ttsEnabled) {
+    window.VoiceManager.speak(pre.textContent);
+  }
 }
 
 // ── Command: /summarize <filename> ───────────────────────────
@@ -523,6 +529,8 @@ function showHelp() {
     '│  /summarize <file>   │  Summarise a document                    │',
     '│  /delete <file>      │  Delete a document and its embeddings    │',
     '│  /status             │  Check Ollama connection & stats         │',
+    '│  /voice              │  Toggle Speech-To-Text (or click MIC)    │',
+    '│  /tts                │  Toggle Text-To-Speech (or click TTS)    │',
     '│  /clear              │  Clear terminal output                   │',
     '│  /help               │  Show this help                          │',
     '├──────────────────────┼──────────────────────────────────────────┤',
@@ -531,6 +539,51 @@ function showHelp() {
     '└──────────────────────┴──────────────────────────────────────────┘',
   ].join('\n');
   print(lines, 'doc-table');
+}
+
+// ── Voice Integration ─────────────────────────────────────────
+
+function handleVoiceToggle() {
+  if (!window.VoiceManager) return;
+  const isNowListening = window.VoiceManager.toggleListening(
+    (interim, final) => {
+      cmdInput.value = (final || interim).trim();
+      syncCursor();
+      if (final) {
+        dispatch(cmdInput.value);
+        cmdInput.value = '';
+        syncCursor();
+      }
+    },
+    () => {
+      micToggle.textContent = '[MIC: OFF]';
+      micToggle.classList.remove('active');
+    }
+  );
+  
+  if (isNowListening) {
+    micToggle.textContent = '[MIC: ON\u25CF]';
+    micToggle.classList.add('active');
+    printInfo("Listening for voice commands...");
+  } else {
+    micToggle.textContent = '[MIC: OFF]';
+    micToggle.classList.remove('active');
+  }
+}
+
+function handleTtsToggle() {
+  if (!window.VoiceManager) return;
+  const isEnabled = window.VoiceManager.toggleTTS();
+  if (isEnabled) {
+    ttsToggle.textContent = '[TTS: ON]';
+    ttsToggle.classList.add('active');
+    printSuccess("Voice feedback enabled.");
+  } else {
+    ttsToggle.textContent = '[TTS: OFF]';
+    ttsToggle.classList.remove('active');
+    printInfo("Voice feedback disabled.");
+    window.VoiceManager.stopSpeaking();
+  }
 }
 
 // ── Command: /clear ───────────────────────────────────────────
@@ -554,6 +607,8 @@ async function dispatch(input) {
     case '/upload':    handleUpload();              break;
     case '/clear':     clearOutput();               break;
     case '/status':    await handleStatus();        break;
+    case '/voice':     handleVoiceToggle();         break;
+    case '/tts':       handleTtsToggle();           break;
     case '/summarize': await handleSummarize(rest); break;
     case '/delete':    await handleDelete(rest);    break;
     default:
@@ -800,6 +855,11 @@ function init() {
   // Status bar — initial + poll every 30 s
   pollStatus();
   setInterval(pollStatus, 30_000);
+
+  if (micToggle && ttsToggle) {
+    micToggle.addEventListener('click', handleVoiceToggle);
+    ttsToggle.addEventListener('click', handleTtsToggle);
+  }
 
   // Pre-load the document list silently so /summarize and /delete work
   refreshDocs(false);

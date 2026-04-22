@@ -71,9 +71,12 @@
   <div id="status-bar" aria-label="System status">
     <span id="ollama-status">[OLLAMA: <span class="status-dot">●</span>CONNECTING]</span>
     <span id="model-info">MODEL: — | DOCS: —</span>
+    <span class="interactive-toggle" id="mic-toggle" title="Toggle Voice Commands (or use /voice)">[MIC: OFF]</span>
+    <span class="interactive-toggle" id="tts-toggle" title="Toggle Voice Feedback (or use /tts)">[TTS: OFF]</span>
     <span id="clock">00:00:00</span>
   </div>
 
+  <script src="voice.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
