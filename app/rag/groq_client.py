@@ -114,3 +114,41 @@ def generate_stream(prompt: str, model: str) -> Generator[str, None, None]:
     except Exception as exc:
         logger.error("Unexpected Groq error: %s", exc)
         yield f"[ERROR: Unexpected Groq error — {exc}]"
+
+
+def generate(prompt: str, model: str) -> str:
+    """Send a prompt to Groq and return the full response (non-streaming).
+
+    Used for quick internal tasks like query rewriting.
+
+    Args:
+        prompt: The full prompt string.
+        model:  Groq model ID (e.g. "llama-3.1-8b-instant").
+
+    Returns:
+        str: The complete response text, or empty string on error.
+    """
+    key = _api_key()
+    if not key:
+        return ""
+
+    url = f"{GROQ_BASE_URL}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model":       model,
+        "messages":    [{"role": "user", "content": prompt}],
+        "stream":      False,
+        "temperature": 0.3,   # lower temp for deterministic rewrites
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=GROQ_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as exc:
+        logger.error("Groq non-streaming error: %s", exc)
+        return ""

@@ -223,7 +223,35 @@ body::before {
   white-space: pre-wrap;
 }
 
-/* Source citations */
+/* ── Source citations (inline after response) ──────────────── */
+.sources-block {
+  margin-top: 6px;
+  padding: 6px 0 2px;
+  border-left: 2px solid var(--cyan);
+  padding-left: 10px;
+}
+
+.sources-label {
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.source-item {
+  color: var(--green-dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.source-id {
+  color: var(--dim);
+  font-size: 10px;
+}
+
+/* Keep old .sources class for backwards compat */
 .sources {
   color: var(--cyan);
   text-shadow: var(--glow-cyan);
@@ -231,6 +259,109 @@ body::before {
   margin-top: 4px;
   border-left: 2px solid var(--cyan);
   padding-left: 8px;
+}
+
+/* ── Source Citation Trail (/sources command) ───────────────── */
+.sources-history {
+  margin-bottom: 10px;
+}
+
+.sources-history-title {
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.citation-entry {
+  margin-bottom: 8px;
+  padding-left: 4px;
+  border-left: 1px solid var(--bg-border);
+  padding: 4px 0 4px 10px;
+}
+
+.citation-question {
+  color: var(--green);
+  text-shadow: var(--glow);
+  font-size: 12.5px;
+}
+
+.citation-time {
+  color: var(--dim);
+  font-size: 10px;
+}
+
+.citation-source {
+  color: var(--green-dim);
+  font-size: 11.5px;
+  padding-left: 4px;
+}
+
+.citation-summary {
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+  font-size: 12px;
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--bg-border);
+  white-space: pre-wrap;
+}
+
+/* ── Conversation History (/history command) ────────────────── */
+.history-block {
+  margin-bottom: 10px;
+}
+
+.history-title {
+  color: var(--amber);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.history-user,
+.history-assistant {
+  margin-bottom: 6px;
+  padding: 4px 0 4px 10px;
+  border-left: 1px solid var(--bg-border);
+}
+
+.history-user .history-role {
+  color: var(--green);
+  text-shadow: var(--glow);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.history-assistant .history-role {
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.history-content {
+  color: var(--dim-text);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 2px;
+  padding-left: 4px;
+  line-height: 1.5;
+}
+
+/* Contextual rewrite note — shows when a follow-up was understood */
+.context-note {
+  color: var(--dim-text);
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  padding: 2px 0;
+  opacity: 0.75;
 }
 
 /* Document table — monospace box drawing */

@@ -88,6 +88,35 @@ def generate_stream(prompt: str, model: str) -> Generator[str, None, None]:
         yield f"\n\n[ERROR: Unexpected error communicating with Ollama — {exc}]"
 
 
+def generate(prompt: str, model: str) -> str:
+    """Send a prompt to Ollama and return the full response (non-streaming).
+
+    Used for quick internal tasks like query rewriting where streaming
+    is unnecessary overhead.
+
+    Args:
+        prompt: The full prompt string to send to the model.
+        model: The Ollama model name (e.g. "gemma4-e2b").
+
+    Returns:
+        str: The complete response text, or an error message.
+    """
+    url = f"{_base_url()}/api/generate"
+    payload = {"model": model, "prompt": prompt, "stream": False}
+
+    try:
+        resp = requests.post(url, json=payload, timeout=OLLAMA_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("response", "").strip()
+    except requests.exceptions.RequestException as exc:
+        logger.error("Ollama non-streaming error: %s", exc)
+        return ""
+    except Exception as exc:
+        logger.error("Unexpected Ollama error (non-stream): %s", exc)
+        return ""
+
+
 def list_models() -> list[str]:
     """Return the names of all models available in the local Ollama instance.
 
