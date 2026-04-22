@@ -195,7 +195,10 @@ def query(question: str, conversation_id: str) -> Generator[str, None, None]:
     conversation.add_message(conversation_id, "user", question)
     conversation.add_message(conversation_id, "assistant", answer_text)
 
-    # 7. Final event with sources
+    # 7. Save source citations for this turn
+    conversation.add_citation(conversation_id, question, sources)
+
+    # 8. Final event with sources
     yield _sse({"done": True, "sources": sources})
 
 

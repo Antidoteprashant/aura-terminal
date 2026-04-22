@@ -323,3 +323,43 @@ def clear_conversations():
 
     clear_all()
     return jsonify({"status": "cleared"})
+
+
+@bp.route("/history/<conversation_id>", methods=["GET"])
+def get_history(conversation_id):
+    """Return the conversation history for a session.
+
+    Returns:
+        JSON: {"conversation_id": str, "messages": [...], "turn_count": int}
+    """
+    from app.models.conversation import get_raw_history
+
+    messages = get_raw_history(conversation_id)
+    return jsonify({
+        "conversation_id": conversation_id,
+        "messages": messages,
+        "turn_count": len(messages) // 2,
+    })
+
+
+@bp.route("/sources/<conversation_id>", methods=["GET"])
+def get_sources(conversation_id):
+    """Return the source citation trail for a conversation session.
+
+    Returns:
+        JSON: {
+            "conversation_id": str,
+            "citations": [{question, sources, timestamp}],
+            "all_documents": [{doc_id, filename, times_cited}]
+        }
+    """
+    from app.models.conversation import get_citations, get_all_cited_documents
+
+    citations = get_citations(conversation_id)
+    all_docs = get_all_cited_documents(conversation_id)
+
+    return jsonify({
+        "conversation_id": conversation_id,
+        "citations": citations,
+        "all_documents": all_docs,
+    })

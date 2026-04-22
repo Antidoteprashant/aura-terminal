@@ -14,6 +14,8 @@ const API = {
   DOCUMENT:      (id) => `/api/documents/${id}`,
   HEALTH:        '/api/health',
   CONVERSATIONS: '/api/conversations',
+  HISTORY:       (id) => `/api/history/${id}`,
+  SOURCES:       (id) => `/api/sources/${id}`,
 };
 
 // ── State ─────────────────────────────────────────────────────
@@ -102,8 +104,26 @@ function printSources(sources) {
     seen.add(s.doc_id);
     return true;
   });
-  const block = createBlock('sources');
-  block.textContent = '── Sources: ' + unique.map((s) => s.filename).join(', ');
+
+  const block = createBlock('sources-block');
+
+  const label = document.createElement('div');
+  label.className = 'sources-label';
+  label.textContent = '📄 Sources cited:';
+  block.appendChild(label);
+
+  for (const src of unique) {
+    const item = document.createElement('div');
+    item.className = 'source-item';
+    item.textContent = `  └─ ${src.filename}`;
+    if (src.doc_id) {
+      const idSpan = document.createElement('span');
+      idSpan.className = 'source-id';
+      idSpan.textContent = ` (${src.doc_id.slice(0, 8)}…)`;
+      item.appendChild(idSpan);
+    }
+    block.appendChild(item);
+  }
 }
 
 // ── Thinking indicator ────────────────────────────────────────
@@ -542,7 +562,9 @@ function showHelp() {
     '│  /docs  /ls          │  List uploaded documents                 │',
     '│  /summarize <file>   │  Summarise a document                    │',
     '│  /delete <file>      │  Delete a document and its embeddings    │',
-    '│  /status             │  Check Ollama connection & stats         │',
+    '│  /sources            │  View all source citations this session  │',
+    '│  /history            │  View conversation history               │',
+    '│  /status             │  Check LLM connection & stats            │',
     '│  /voice              │  Toggle Speech-To-Text (or click MIC)    │',
     '│  /tts                │  Toggle Text-To-Speech (or click TTS)    │',
     '│  /clear              │  Clear terminal output                   │',
@@ -553,6 +575,109 @@ function showHelp() {
     '└──────────────────────┴──────────────────────────────────────────┘',
   ].join('\n');
   print(lines, 'doc-table');
+}
+
+// ── Command: /sources ─────────────────────────────────────────
+async function handleSourcesCmd() {
+  try {
+    const resp = await fetch(API.SOURCES(state.conversationId));
+    const data = await resp.json();
+
+    if (!data.citations || data.citations.length === 0) {
+      printInfo('No sources cited yet this session. Ask a question first.');
+      return;
+    }
+
+    // Header
+    const block = createBlock('sources-history');
+    const title = document.createElement('div');
+    title.className = 'sources-history-title';
+    title.textContent = '╔══ SOURCE CITATION TRAIL ══╗';
+    block.appendChild(title);
+
+    // Each citation entry
+    for (const entry of data.citations) {
+      const row = document.createElement('div');
+      row.className = 'citation-entry';
+
+      const q = document.createElement('div');
+      q.className = 'citation-question';
+      q.textContent = `❯ "${entry.question}"`;
+      row.appendChild(q);
+
+      const time = document.createElement('span');
+      time.className = 'citation-time';
+      time.textContent = `  [${entry.timestamp}]`;
+      q.appendChild(time);
+
+      for (const src of entry.sources) {
+        const s = document.createElement('div');
+        s.className = 'citation-source';
+        s.textContent = `  📄 ${src.filename}`;
+        row.appendChild(s);
+      }
+
+      block.appendChild(row);
+    }
+
+    // Summary
+    if (data.all_documents && data.all_documents.length > 0) {
+      const summary = document.createElement('div');
+      summary.className = 'citation-summary';
+      summary.textContent = '\n── Documents referenced: ' +
+        data.all_documents.map((d) => `${d.filename} (×${d.times_cited})`).join(', ');
+      block.appendChild(summary);
+    }
+
+    scrollToBottom();
+  } catch (err) {
+    printError('Could not fetch sources: ' + err.message);
+  }
+}
+
+// ── Command: /history ─────────────────────────────────────────
+async function handleHistoryCmd() {
+  try {
+    const resp = await fetch(API.HISTORY(state.conversationId));
+    const data = await resp.json();
+
+    if (!data.messages || data.messages.length === 0) {
+      printInfo('No conversation history yet. Ask a question first.');
+      return;
+    }
+
+    const block = createBlock('history-block');
+    const title = document.createElement('div');
+    title.className = 'history-title';
+    title.textContent = `╔══ CONVERSATION HISTORY (${data.turn_count} turns) ══╗`;
+    block.appendChild(title);
+
+    for (const msg of data.messages) {
+      const row = document.createElement('div');
+      row.className = msg.role === 'user' ? 'history-user' : 'history-assistant';
+
+      const label = msg.role === 'user' ? '❯ You' : '◆ AURA';
+      const time = msg.timestamp ? ` [${msg.timestamp}]` : '';
+
+      const header = document.createElement('span');
+      header.className = 'history-role';
+      header.textContent = `${label}${time}:`;
+      row.appendChild(header);
+
+      const content = document.createElement('pre');
+      content.className = 'history-content';
+      // Truncate long assistant responses for readability
+      const text = msg.content;
+      content.textContent = text.length > 200 ? text.slice(0, 200) + '…' : text;
+      row.appendChild(content);
+
+      block.appendChild(row);
+    }
+
+    scrollToBottom();
+  } catch (err) {
+    printError('Could not fetch history: ' + err.message);
+  }
 }
 
 // ── Voice Integration ─────────────────────────────────────────
@@ -623,6 +748,8 @@ async function dispatch(input) {
     case '/upload':    handleUpload();              break;
     case '/clear':     clearOutput();               break;
     case '/status':    await handleStatus();        break;
+    case '/sources':   await handleSourcesCmd();    break;
+    case '/history':   await handleHistoryCmd();    break;
     case '/voice':     handleVoiceToggle();         break;
     case '/tts':       handleTtsToggle();           break;
     case '/summarize': await handleSummarize(rest); break;
