@@ -44,8 +44,18 @@
   <!-- Scrollable output area -->
   <div id="output" role="log" aria-live="polite" aria-label="Terminal output"></div>
 
+  <!-- Keyboard shortcuts hint bar -->
+  <div id="shortcuts-bar">
+    <span class="shortcut"><span class="key">↑↓</span> history</span>
+    <span class="shortcut"><span class="key">Tab</span> complete</span>
+    <span class="shortcut"><span class="key">Drag&Drop</span> upload</span>
+    <span class="shortcut"><span class="key">/help</span> commands</span>
+  </div>
+
   <!-- Command input bar -->
   <div id="input-bar">
+    <!-- Autocomplete dropdown — shown when user types a / command -->
+    <div id="autocomplete-dropdown" role="listbox" aria-label="Command suggestions"></div>
     <div id="input-actions">
       <button id="voice-btn" class="action-btn" aria-label="Voice input" title="Voice input (STT)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

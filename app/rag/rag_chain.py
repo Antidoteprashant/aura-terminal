@@ -163,7 +163,9 @@ def query(question: str, conversation_id: str) -> Generator[str, None, None]:
         return
 
     if not hits:
-        yield _sse({"token": "No documents have been uploaded yet. Use /upload to add study materials."})
+        prompt = prompts.build_no_docs_prompt(question)
+        for token in llm.generate_stream(prompt):
+            yield _sse({"token": token})
         yield _sse({"done": True, "sources": []})
         return
 

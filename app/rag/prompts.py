@@ -1,5 +1,19 @@
 """Prompt templates for the RAG Q&A and summarization pipelines."""
 
+# ── Token Budget Guards ───────────────────────────────────────
+# Max character budgets (rough approximation: 4 chars ~ 1 token)
+MAX_CONTEXT_CHARS = 12000  # ~3000 tokens
+MAX_HISTORY_CHARS = 2000   # ~500 tokens
+
+
+def _truncate(text: str, max_chars: int) -> str:
+    """Truncate text to fit within a character budget, adding an ellipsis if cut."""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "\n... [truncated for context length]"
+
+
+# ── Prompt Builders ───────────────────────────────────────────
 
 def build_rewrite_prompt(history: str, question: str) -> str:
     """Build a prompt that rewrites a follow-up question into a standalone query.
@@ -37,64 +51,70 @@ def build_rewrite_prompt(history: str, question: str) -> str:
 
 
 def build_qa_prompt(context: str, history: str, question: str) -> str:
-    """Build the QA prompt with retrieved context, conversation history, and question.
+    """Build a robust QA prompt with character budgeting.
 
     Uses a hybrid approach: the LLM first answers from document context,
     then supplements with its own knowledge when documents lack detail.
 
     Args:
         context: Retrieved document chunks, formatted as "doc_name: chunk_text".
-        history: Conversation history formatted as "User: ...\\nAssistant: ...".
+        history: Conversation history formatted as "User: ...\nAssistant: ...".
         question: The user's current question.
-
-    Returns:
-        str: The fully-formatted prompt string ready to send to the LLM.
     """
+    safe_context = _truncate(context, MAX_CONTEXT_CHARS)
+    safe_history = _truncate(history, MAX_HISTORY_CHARS)
+
     return (
-        "You are a helpful study assistant with access to the user's uploaded documents "
-        "and your own general knowledge.\n"
-        "\n"
+        "SYSTEM: You are AURA, an intelligent RAG Terminal assistant. "
+        "Answer the user's question using ONLY the provided CONTEXT. "
+        "If the answer isn't in the context, say: 'I don't have enough information in the uploaded documents to answer this.'\n\n"
+        
         "RULES:\n"
-        "- FIRST, answer using the provided document context below\n"
-        "- Cite the document name when using information from the context "
-        "(e.g. 'According to [filename]...')\n"
-        "- If the documents mention a topic but don't explain it in detail, "
-        "use your own knowledge to elaborate and explain it further\n"
-        "- When using your own knowledge beyond the documents, briefly note it "
-        "(e.g. 'Based on general knowledge...' or 'To elaborate further...')\n"
-        "- If the question is a follow-up, use the conversation history for context\n"
-        "- Be thorough but well-structured — use headings, bullet points, or "
-        "numbered lists when appropriate\n"
-        "- If the documents have NO relevant information at all and you cannot "
-        "answer from general knowledge either, say so clearly\n"
-        "\n"
-        f"DOCUMENT CONTEXT:\n{context}\n"
-        "\n"
-        f"CONVERSATION HISTORY:\n{history}\n"
-        "\n"
-        f"QUESTION: {question}\n"
-        "\n"
-        "ANSWER:"
+        "1. Stay concise and technical.\n"
+        "2. Use bullet points for lists.\n"
+        "3. ALWAYS cite the filename (e.g., [notes.pdf]) when using information from it.\n"
+        "4. If the question is a follow-up, use the CONVERSATION HISTORY for context.\n\n"
+        
+        f"CONTEXT:\n{safe_context}\n\n"
+        f"CONVERSATION HISTORY:\n{safe_history}\n\n"
+        f"USER: {question}\n\n"
+        "ASSISTANT:"
     )
 
 
 def build_summarize_prompt(doc_name: str, content: str) -> str:
-    """Build the summarization prompt for a document.
+    """Build a structured summarization prompt.
 
     Args:
-        doc_name: The filename of the document.
-        content: The full document text (or concatenated chunks).
-
-    Returns:
-        str: The fully-formatted summarization prompt.
+        doc_name: Filename.
+        content: Document content.
     """
+    safe_content = _truncate(content, MAX_CONTEXT_CHARS)
+
     return (
-        "You are a study assistant. Provide a clear, concise summary of the following document content.\n"
-        "Focus on key concepts, definitions, and important points that a student would need to know.\n"
-        "\n"
+        "SYSTEM: You are a study assistant. Provide a structured summary of the document below.\n\n"
+        
         f"DOCUMENT: {doc_name}\n"
         "CONTENT:\n"
-        f"{content}\n"
-        "\n"
+        f"{safe_content}\n\n"
+        
+        "INSTRUCTIONS:\n"
+        "- Start with a 1-sentence overview.\n"
+        "- List 5-7 key concepts or definitions as bullet points.\n"
+        "- End with a 'Key Takeaway' section.\n\n"
         "SUMMARY:"
+    )
+
+
+def build_no_docs_prompt(question: str) -> str:
+    """Prompt for when the user asks a question but no documents are uploaded.
+    
+    This allows the LLM to explain the system capability rather than just failing.
+    """
+    return (
+        "SYSTEM: You are AURA. The user has not uploaded any documents yet.\n"
+        "Briefly explain that you are a RAG (Retrieval-Augmented Generation) terminal "
+        "and that they should use the /upload command or drag-and-drop files to get started.\n\n"
+        f"USER: {question}\n"
+        "ASSISTANT:"
     )
