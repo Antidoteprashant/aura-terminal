@@ -15,12 +15,50 @@ def _truncate(text: str, max_chars: int) -> str:
 
 # ── Prompt Builders ───────────────────────────────────────────
 
+def build_rewrite_prompt(history: str, question: str) -> str:
+    """Build a prompt that rewrites a follow-up question into a standalone query.
+
+    When the user asks something like "explain it" or "tell me more", the raw
+    question is too vague for vector search. This prompt asks the LLM to
+    produce a single, self-contained question using conversation context.
+
+    Args:
+        history: Conversation history formatted as "User: ...\\nAssistant: ...".
+        question: The user's current (possibly vague) follow-up question.
+
+    Returns:
+        str: The fully-formatted rewrite prompt.
+    """
+    return (
+        "You are a query rewriter. Given the conversation history and a follow-up "
+        "question, rewrite the follow-up into a standalone question that captures "
+        "the full intent.\n"
+        "\n"
+        "RULES:\n"
+        "- Output ONLY the rewritten question, nothing else\n"
+        "- Do NOT answer the question\n"
+        "- If the question is already standalone, return it unchanged\n"
+        "- Preserve the original intent and specificity\n"
+        "- Include relevant context from the conversation history\n"
+        "\n"
+        f"CONVERSATION HISTORY:\n{history}\n"
+        "\n"
+        f"FOLLOW-UP QUESTION: {question}\n"
+        "\n"
+        "STANDALONE QUESTION:"
+    )
+
+
+
 def build_qa_prompt(context: str, history: str, question: str) -> str:
     """Build a robust QA prompt with character budgeting.
 
+    Uses a hybrid approach: the LLM first answers from document context,
+    then supplements with its own knowledge when documents lack detail.
+
     Args:
-        context: Retrieved document chunks.
-        history: Conversation history.
+        context: Retrieved document chunks, formatted as "doc_name: chunk_text".
+        history: Conversation history formatted as "User: ...\nAssistant: ...".
         question: The user's current question.
     """
     safe_context = _truncate(context, MAX_CONTEXT_CHARS)
